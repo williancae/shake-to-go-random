@@ -1,7 +1,7 @@
 "use client";
 
 import { Product } from "@/types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface SpinWheelProps {
   products: Product[];
@@ -11,11 +11,9 @@ interface SpinWheelProps {
 export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [currentSector, setCurrentSector] = useState<Product | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
-  const targetRef = useRef<number>(0);
 
   // Animação
   const [angVel, setAngVel] = useState(0);
@@ -26,25 +24,15 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   const PI = Math.PI;
   const TAU = 2 * PI;
 
-  // Cria mapeamento de índices para as fatias da roleta
-  const wheelSectors = useMemo(() => {
-    return products.map((_, index) => index);
-  }, [products]);
-
-  // Converte ângulo atual para índice da fatia (seta aponta para cima)
-  const getWheelIndex = useCallback(() => {
+  // NOVO getIndex: inverte o ângulo para coincidir com a seta apontando para cima
+  const getIndex = useCallback(() => {
     if (products.length === 0) return 0;
-    
+
     const sectorAngle = TAU / products.length;
-    // Ajusta para seta apontando para cima (topo = 0 graus)
-    const adjustedAngle = (ang + PI/2) % TAU;
-    const normalizedAngle = adjustedAngle < 0 ? adjustedAngle + TAU : adjustedAngle;
-    
+    // Normaliza e inverte o ângulo
+    const normalizedAngle = ((-ang % TAU) + TAU) % TAU;
     return Math.floor(normalizedAngle / sectorAngle) % products.length;
   }, [ang, products.length]);
-
-  // Mantém compatibilidade com código existente
-  const getIndex = getWheelIndex;
 
   // Pré‑carregamento de imagens
   const preloadImages = useCallback(() => {
@@ -201,25 +189,16 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
 
   // Quadro da física
   const frame = useCallback(() => {
-    const newAngVel = angVel * friction;
-    
-    // Limiar muito menor + snap milimétrico
-    if (Math.abs(newAngVel) < 0.00005 && spinButtonClicked) {
-      // Snap exato para o ângulo alvo
-      setAng(targetRef.current);
-      setAngVel(0);
+    if (!angVel && spinButtonClicked) {
       setIsSpinning(false);
       setSpinButtonClicked(false);
-      // Chama onSpin após o snap garantir alinhamento perfeito
-      if (selectedProduct) {
-        onSpin(selectedProduct);
-      }
+      onSpin(products[getIndex()]);
       return;
     }
-    
-    setAngVel(newAngVel);
+    const newAngVel = angVel * friction;
+    setAngVel(newAngVel < 0.002 ? 0 : newAngVel);
     setAng((prev) => (prev + newAngVel) % TAU);
-  }, [angVel, spinButtonClicked, friction, onSpin, selectedProduct]);
+  }, [angVel, spinButtonClicked, friction, onSpin, products, getIndex]);
 
   const engine = useCallback(() => {
     frame();
@@ -229,47 +208,32 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   const handleSpin = () => {
     if (angVel || products.length === 0) return;
 
-    // Validação: soma das probabilidades
-    const totalWeight = products.reduce((sum, p) => sum + p.probability, 0);
-    if (totalWeight <= 0) {
-      console.error("Soma das probabilidades deve ser maior que 0");
-      return;
-    }
-
-    // 1. SELEÇÃO PONDERADA - escolhe o produto vencedor baseado na probability
-    const rand = Math.random() * totalWeight;
-    let selectedIdx = 0;
+    // Seleção ponderada
+    const totalWeight = products.reduce(
+      (sum, p) => sum + p.probability,
+      0
+    );
+    let rand = Math.random() * totalWeight;
+    let idx = 0;
     let cum = 0;
     for (let i = 0; i < products.length; i++) {
       cum += products[i].probability;
       if (rand <= cum) {
-        selectedIdx = i;
+        idx = i;
         break;
       }
     }
 
-    // Armazena o produto selecionado (este será o vencedor real)
-    setSelectedProduct(products[selectedIdx]);
+    const arc = TAU / products.length;
+    const mid = idx * arc + arc / 2;
+    const randomness = (Math.random() - 0.5) * arc * 0.5;
+    const target = mid + randomness;
+    const rotations = 2 + Math.random() * 2;
+    const final = target + rotations * TAU;
+    const diff = final - (ang % TAU);
+    const initVel = diff * (1 - friction);
 
-    // 2. ANIMAÇÃO VISUAL - calcula ângulo para parar no índice selecionado
-    const sectorAngle = TAU / products.length;
-    // Calcula ângulo alvo para o índice selecionado (centro da fatia)
-    const targetAngle = selectedIdx * sectorAngle + sectorAngle / 2;
-    // Ajusta para o sistema de coordenadas da seta (topo = 0)
-    const target = targetAngle - PI/2;
-    
-    // Voltas extras para efeito visual
-    const rotations = 3 + Math.random() * 2; // 3-5 voltas
-    const diff = target - (ang % TAU);
-    const totalAngle = diff + rotations * TAU;
-    
-    // Armazena o ângulo alvo para snap posterior
-    targetRef.current = target;
-    
-    // Velocidade inicial precisa baseada na fricção exponencial
-    const initVel = totalAngle * (1 - friction);
-
-    setAngVel(initVel); // Remove Math.abs - initVel já é positivo
+    setAngVel(Math.abs(initVel));
     setSpinButtonClicked(true);
     setIsSpinning(true);
   };
