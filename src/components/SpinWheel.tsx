@@ -13,38 +13,14 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   const [currentSector, setCurrentSector] = useState<Product | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>(0);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
-  const targetRef = useRef<number>(0);
 
-  // Animação
-  const [angVel, setAngVel] = useState(0);
-  const [ang, setAng] = useState(0);
-  const [spinButtonClicked, setSpinButtonClicked] = useState(false);
+  // Estado para ângulo acumulado em graus
+  const [wheelDeg, setWheelDeg] = useState(0);
 
-  const friction = 0.991;
-  const PI = Math.PI;
-  const TAU = 2 * PI;
-
-  // Cria mapeamento de índices para as fatias da roleta
-  const wheelSectors = useMemo(() => {
-    return products.map((_, index) => index);
-  }, [products]);
-
-  // Converte ângulo atual para índice da fatia (seta aponta para cima)
-  const getWheelIndex = useCallback(() => {
-    if (products.length === 0) return 0;
-    
-    const sectorAngle = TAU / products.length;
-    // Ajusta para seta apontando para cima (topo = 0 graus)
-    const adjustedAngle = (ang + PI/2) % TAU;
-    const normalizedAngle = adjustedAngle < 0 ? adjustedAngle + TAU : adjustedAngle;
-    
-    return Math.floor(normalizedAngle / sectorAngle) % products.length;
-  }, [ang, products.length]);
-
-  // Mantém compatibilidade com código existente
-  const getIndex = getWheelIndex;
+  // Constantes para cálculo determinístico
+  const arcDeg = 360 / products.length;
+  const pointerOffset = 90; // seta fixada em 12h -> 90°
 
   // Pré‑carregamento de imagens
   const preloadImages = useCallback(() => {
@@ -77,7 +53,7 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   const drawSector = useCallback(
     (ctx: CanvasRenderingContext2D, product: Product, i: number) => {
       const rad = ctx.canvas.width / 2;
-      const arc = TAU / products.length;
+      const arc = (2 * Math.PI) / products.length;
       const sectorAng = arc * i;
 
       ctx.save();
@@ -114,13 +90,13 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
             imageY + imageSize / 2,
             imageSize / 2,
             0,
-            TAU
+            2 * Math.PI
           );
           ctx.clip();
 
           if (product.rotation) {
             ctx.translate(imageX + imageSize / 2, imageY + imageSize / 2);
-            ctx.rotate((product.rotation * PI) / 180);
+            ctx.rotate((product.rotation * Math.PI) / 180);
             ctx.drawImage(
               cachedImg,
               -imageSize / 2,
@@ -141,7 +117,7 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
             imageY + imageSize / 2,
             imageSize / 2,
             0,
-            TAU
+            2 * Math.PI
           );
           const hue = (i * 360) / products.length;
           ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
@@ -179,12 +155,6 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
     products.forEach((p, i) => drawSector(ctx, p, i));
   }, [products, drawSector]);
 
-  const rotate = useCallback(() => {
-    if (!canvasRef.current) return;
-    // Aplica rotação no DOM
-    canvasRef.current.style.transform = `rotate(${ang - PI / 2}rad)`;
-  }, [ang]);
-
   // Inicializa setor atual
   useEffect(() => {
     if (products.length > 0) {
@@ -192,42 +162,25 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
     }
   }, [products]);
 
-  // Atualiza setor durante rotação
+  // Handler de fim de transição
   useEffect(() => {
-    if (products.length > 0) {
-      setCurrentSector(products[getIndex()] || products[0]);
-    }
-  }, [ang, products, getIndex]);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  // Quadro da física
-  const frame = useCallback(() => {
-    const newAngVel = angVel * friction;
-    
-    // Limiar muito menor + snap milimétrico
-    if (Math.abs(newAngVel) < 0.00005 && spinButtonClicked) {
-      // Snap exato para o ângulo alvo
-      setAng(targetRef.current);
-      setAngVel(0);
+    const handleTransitionEnd = () => {
+      canvas.style.transition = 'none';
       setIsSpinning(false);
-      setSpinButtonClicked(false);
-      // Chama onSpin após o snap garantir alinhamento perfeito
       if (selectedProduct) {
         onSpin(selectedProduct);
       }
-      return;
-    }
-    
-    setAngVel(newAngVel);
-    setAng((prev) => (prev + newAngVel) % TAU);
-  }, [angVel, spinButtonClicked, friction, onSpin, selectedProduct]);
+    };
 
-  const engine = useCallback(() => {
-    frame();
-    animationRef.current = requestAnimationFrame(engine);
-  }, [frame]);
+    canvas.addEventListener('transitionend', handleTransitionEnd);
+    return () => canvas.removeEventListener('transitionend', handleTransitionEnd);
+  }, [onSpin, selectedProduct]);
 
   const handleSpin = () => {
-    if (angVel || products.length === 0) return;
+    if (isSpinning || products.length === 0) return;
 
     // Validação: soma das probabilidades
     const totalWeight = products.reduce((sum, p) => sum + p.probability, 0);
@@ -248,30 +201,25 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
       }
     }
 
-    // Armazena o produto selecionado (este será o vencedor real)
-    setSelectedProduct(products[selectedIdx]);
+    const winner = products[selectedIdx];
+    setSelectedProduct(winner);
 
-    // 2. ANIMAÇÃO VISUAL - calcula ângulo para parar no índice selecionado
-    const sectorAngle = TAU / products.length;
-    // Calcula ângulo alvo para o índice selecionado (centro da fatia)
-    const targetAngle = selectedIdx * sectorAngle + sectorAngle / 2;
-    // Ajusta para o sistema de coordenadas da seta (topo = 0)
-    const target = targetAngle - PI/2;
-    
-    // Voltas extras para efeito visual
-    const rotations = 3 + Math.random() * 2; // 3-5 voltas
-    const diff = target - (ang % TAU);
-    const totalAngle = diff + rotations * TAU;
-    
-    // Armazena o ângulo alvo para snap posterior
-    targetRef.current = target;
-    
-    // Velocidade inicial precisa baseada na fricção exponencial
-    const initVel = totalAngle * (1 - friction);
+    // 2. CÁLCULO DETERMINÍSTICO - ângulo final onde seta aponta para centro da fatia
+    const sectorCenter = selectedIdx * arcDeg + arcDeg / 2;
+    const targetDeg = pointerOffset - sectorCenter;
 
-    setAngVel(initVel); // Remove Math.abs - initVel já é positivo
-    setSpinButtonClicked(true);
+    // 3. VOLTAS EXTRAS para suspense (3-5 voltas completas)
+    const extraRotations = 1080 + Math.random() * 720; // 3 a 5 voltas
+    const finalDeg = wheelDeg + extraRotations + targetDeg;
+
+    // 4. APLICA TRANSIÇÃO CSS
+    const canvas = canvasRef.current!;
+    canvas.style.transition = 'transform 3.6s cubic-bezier(.05,.82,.53,.99)';
+    canvas.style.transform = `rotate(${finalDeg}deg)`;
+
     setIsSpinning(true);
+    setWheelDeg(finalDeg);
+    setCurrentSector(winner);
   };
 
   // Ciclo de efeitos
@@ -280,20 +228,8 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   }, [drawWheel]);
 
   useEffect(() => {
-    rotate();
-  }, [rotate]);
-
-  useEffect(() => {
     preloadImages();
   }, [preloadImages]);
-
-  useEffect(() => {
-    if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    animationRef.current = requestAnimationFrame(engine);
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [engine]);
 
   return (
     <div className="flex flex-col items-center justify-center">
