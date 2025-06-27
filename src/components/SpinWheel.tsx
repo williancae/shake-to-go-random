@@ -19,8 +19,11 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   const [wheelDeg, setWheelDeg] = useState(0);
 
   // Constantes para cálculo determinístico
-  const arcDeg = 360 / products.length;
-  const pointerOffset = 90; // seta fixada em 12h -> 90°
+  const arcDeg = products.length > 0 ? 360 / products.length : 0;
+  const pointerOffset = -90; // seta no topo = -90° (ou 270°)
+  
+  // Utilitário para normalizar ângulos em 0-360°
+  const norm360 = (d: number) => ((d % 360) + 360) % 360;
 
   // Pré‑carregamento de imagens
   const preloadImages = useCallback(() => {
@@ -53,7 +56,7 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   const drawSector = useCallback(
     (ctx: CanvasRenderingContext2D, product: Product, i: number) => {
       const rad = ctx.canvas.width / 2;
-      const arc = (2 * Math.PI) / products.length;
+      const arc = products.length > 0 ? (2 * Math.PI) / products.length : 0;
       const sectorAng = arc * i;
 
       ctx.save();
@@ -159,6 +162,8 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   useEffect(() => {
     if (products.length > 0) {
       setCurrentSector(products[0]);
+    } else {
+      setCurrentSector(null);
     }
   }, [products]);
 
@@ -204,13 +209,15 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
     const winner = products[selectedIdx];
     setSelectedProduct(winner);
 
-    // 2. CÁLCULO DETERMINÍSTICO - ângulo final onde seta aponta para centro da fatia
-    const sectorCenter = selectedIdx * arcDeg + arcDeg / 2;
-    const targetDeg = pointerOffset - sectorCenter;
+    // 2. ÂNGULO ALVO EXATO
+    const sectorCenter = selectedIdx * arcDeg + arcDeg / 2;  // 0-360
+    const currentDeg = norm360(wheelDeg);                     // 0-360
+    let delta = pointerOffset - sectorCenter - currentDeg;
+    delta = norm360(delta);                                   // 0-360 (clockwise)
 
-    // 3. VOLTAS EXTRAS para suspense (3-5 voltas completas)
-    const extraRotations = 1080 + Math.random() * 720; // 3 a 5 voltas
-    const finalDeg = wheelDeg + extraRotations + targetDeg;
+    // 3. VOLTAS DE SUSPENSE (múltiplos exatos de 360°)
+    const extraTurns = (3 + Math.floor(Math.random() * 3)) * 360; // 3-5 voltas
+    const finalDeg = wheelDeg + delta + extraTurns;
 
     // 4. APLICA TRANSIÇÃO CSS
     const canvas = canvasRef.current!;
@@ -230,6 +237,17 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   useEffect(() => {
     preloadImages();
   }, [preloadImages]);
+
+  // Não renderiza se não há produtos
+  if (products.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <div className="text-center p-8">
+          <p className="text-gray-500">Carregando roleta...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center">
@@ -264,20 +282,16 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
             backgroundColor: "#22c55e",
           }}
         >
-          {!isSpinning && (
+          {!isSpinning ? (
             <span className="relative z-10 text-center text-sm font-bold text-white drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)]">
               GIRAR!
             </span>
+          ) : (
+            <span className="relative z-10 text-center text-sm font-bold text-white drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)]">
+              BOA SORTE 🤞
+            </span>
           )}
 
-          {products.map((product) => (
-            <img
-              key={product.id}
-              src={product.image || ""}
-              alt={product.name}
-              className={`absolute inset-0 w-full h-full object-cover rounded-full pointer-events-none ${(currentSector?.id === product.id && isSpinning) ? "opacity-100" : "opacity-0"}`}
-            />
-          ))}
         </div>
       </div>
 

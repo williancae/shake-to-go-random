@@ -12,10 +12,20 @@ interface PrizeModalProps {
 export default function PrizeModal({ isOpen, winner, onClose }: PrizeModalProps) {
   const [showAnimation, setShowAnimation] = useState(false)
   const [showProduct, setShowProduct] = useState(false)
+  const [confettiPositions, setConfettiPositions] = useState<Array<{left: number, top: number, delay: number, duration: number}>>([])
 
   useEffect(() => {
     if (isOpen && winner) {
       setShowAnimation(true)
+      // Generate confetti positions only on client side
+      const positions = Array.from({ length: 20 }, () => ({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        delay: Math.random() * 2,
+        duration: 1 + Math.random()
+      }))
+      setConfettiPositions(positions)
+      
       // Delay showing the product for dramatic effect
       setTimeout(() => {
         setShowProduct(true)
@@ -23,14 +33,20 @@ export default function PrizeModal({ isOpen, winner, onClose }: PrizeModalProps)
     } else {
       setShowAnimation(false)
       setShowProduct(false)
+      setConfettiPositions([])
     }
   }, [isOpen, winner])
 
   if (!isOpen || !winner) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg mx-4">
+    <div className="fixed inset-0 z-50">
+      {/* Gradient overlay for left and right edges */}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/10 to-black/70 pointer-events-none"></div>
+      
+      {/* Modal content centered */}
+      <div className="relative inset-0 flex items-center justify-center h-full pointer-events-auto">
+        <div className="relative w-full max-w-lg mx-4">
         {/* Background Animation Rings */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className={`w-96 h-96 rounded-full border-4 border-primary-300 opacity-30 ${showAnimation ? 'animate-ping' : ''}`}></div>
@@ -146,23 +162,24 @@ export default function PrizeModal({ isOpen, winner, onClose }: PrizeModalProps)
         </div>
 
         {/* Confetti Effect */}
-        {showAnimation && (
+        {showAnimation && confettiPositions.length > 0 && (
           <div className="absolute inset-0 pointer-events-none">
-            {[...Array(20)].map((_, i) => (
+            {confettiPositions.map((position, i) => (
               <div
                 key={i}
                 className={`absolute w-2 h-2 bg-yellow-400 rounded-full animate-bounce`}
                 style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 2}s`,
-                  animationDuration: `${1 + Math.random()}s`
+                  left: `${position.left}%`,
+                  top: `${position.top}%`,
+                  animationDelay: `${position.delay}s`,
+                  animationDuration: `${position.duration}s`
                 }}
               ></div>
             ))}
           </div>
         )}
       </div>
+    </div>
     </div>
   )
 }
