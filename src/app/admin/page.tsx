@@ -11,7 +11,9 @@ interface ProductFormData {
   rotation?: number
 }
 
-export default function AdminPanel() {
+import withAuth from "@/components/withAuth";
+
+const AdminPanel = () => {
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -246,12 +248,17 @@ ${activeProducts.map(p => `• ${p.name}: ${p.probability}% → ${(p.probability
               <h1 className="text-3xl font-bold text-gray-900">Painel Administrativo</h1>
               <p className="text-gray-600 mt-1">Shake To Go - Gerenciamento de Produtos</p>
             </div>
-            <button
-              onClick={() => setShowForm(true)}
-              className="btn-primary"
-            >
-              Adicionar Produto
-            </button>
+            <div className="flex items-center space-x-4">
+              <a href="/" className="btn-secondary">
+                Ir para roleta
+              </a>
+              <button
+                onClick={() => setShowForm(true)}
+                className="btn-primary"
+              >
+                Adicionar Produto
+              </button>
+            </div>
           </div>
 
           {/* Probability Summary Card */}
@@ -673,3 +680,5 @@ ${activeProducts.map(p => `• ${p.name}: ${p.probability}% → ${(p.probability
     </div>
   )
 }
+
+export default withAuth(AdminPanel);

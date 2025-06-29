@@ -66,31 +66,58 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex flex-col items-center justify-center p-4">
+    <main className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex flex-col items-center justify-center p-4 relative overflow-hidden shake-pattern-bg">
+      {/* Decorative Shake Images */}
+      <div className="absolute inset-0 pointer-events-none opacity-10">
+        <img src="/images/shake_03.png" alt="" className="absolute top-20 right-20 w-14 h-18 -rotate-12 animate-float-delayed" />
+        <img src="/images/shake_05.png" alt="" className="absolute bottom-32 left-16 w-12 h-16 rotate-45 animate-float" />
+        <img src="/images/shake_07.png" alt="" className="absolute bottom-20 right-32 w-18 h-22 -rotate-6 animate-float-delayed" />
+        <img src="/images/shake_12.png" alt="" className="absolute top-1/2 left-8 w-10 h-14 rotate-90 animate-float" />
+        <img src="/images/shake_13.png" alt="" className="absolute top-1/3 right-12 w-16 h-20 -rotate-45 animate-float-delayed" />
+      </div>
+
       {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-5xl font-black text-primary-800 mb-2 drop-shadow-lg">
-          Shake To Go
-        </h1>
+      <div className="text-center mb-8 relative z-10">
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <img src="/images/shake_04.png" alt="Shake" className="w-12 h-16 animate-bounce" />
+          <h1 className="text-5xl font-black text-primary-800 drop-shadow-lg">
+            Shake To Go
+          </h1>
+          <img src="/images/shake_06.png" alt="Shake" className="w-12 h-16 animate-bounce delay-300" />
+        </div>
         <p className="text-xl text-primary-600 font-semibold">
           🎲 Gire a roleta e ganhe prêmios incríveis! 🎲
         </p>
         <div className="w-24 h-1 bg-primary-500 mx-auto mt-4 rounded-full"></div>
       </div>
 
-      {/* Spin Wheel */}
-      <div className="flex-1 flex items-center justify-center">
-        <SpinWheel products={products} onSpin={handleSpin} />
+      {/* Spin Wheel Section */}
+      <div className="flex-1 flex items-center justify-center relative">
+        {/* Floating Shakes around the wheel */}
+        <div className="absolute inset-0 pointer-events-none">
+          <img src="/images/shake_04.png" alt="" className="absolute top-16 left-1/4 w-12 h-16 opacity-20 animate-float transform -rotate-12" />
+          <img src="/images/shake_06.png" alt="" className="absolute top-16 right-1/4 w-12 h-16 opacity-20 animate-float-delayed transform rotate-12" />
+          <img src="/images/shake_de_morango.png" alt="" className="absolute bottom-16 left-1/3 w-10 h-14 opacity-20 animate-float transform rotate-6" />
+          <img src="/images/shake_13.png" alt="" className="absolute bottom-16 right-1/3 w-10 h-14 opacity-20 animate-float-delayed transform -rotate-6" />
+        </div>
+        
+        {/* Wheel Container */}
+        <div className="relative z-10">
+          <SpinWheel products={products} onSpin={handleSpin} />
+        </div>
       </div>
 
-      {/* Admin Link */}
-      <div className="mt-8">
-        <a
-          href="/admin"
-          className="text-sm text-primary-600 hover:text-primary-800 underline font-medium"
-        >
-          Acesso Administrativo
-        </a>
+      {/* Footer Section */}
+      <div className="mt-8 relative z-10">
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <img src="/images/shake_03.png" alt="Shake" className="w-8 h-12 opacity-60 animate-pulse" />
+          <div className="text-center">
+            <p className="text-primary-700 font-semibold mb-2">✨ Sabores incríveis te esperando! ✨</p>
+            
+            
+          </div>
+          <img src="/images/shake_05.png" alt="Shake" className="w-8 h-12 opacity-60 animate-pulse delay-300" />
+        </div>
       </div>
 
       {/* Prize Modal */}

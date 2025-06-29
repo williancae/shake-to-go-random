@@ -12,8 +12,10 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [currentSector, setCurrentSector] = useState<Product | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [displayedProduct, setDisplayedProduct] = useState<Product | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
+  const randomTextInterval = useRef<NodeJS.Timeout | null>(null);
 
   // Estado para ângulo acumulado em graus
   const [wheelDeg, setWheelDeg] = useState(0);
@@ -59,10 +61,15 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
       const arc = products.length > 0 ? (2 * Math.PI) / products.length : 0;
       const sectorAng = arc * i;
 
+      const isOdd = products.length % 2 !== 0;
+      const colors = isOdd
+        ? ["#22c55e", "#16a34a", "#15803d", "#166534", "#14532d"]
+        : ["#22c55e", "#16a34a"];
+
       ctx.save();
       // Fundo do setor
       ctx.beginPath();
-      ctx.fillStyle = i % 2 === 0 ? "#22c55e" : "#16a34a";
+      ctx.fillStyle = colors[i % colors.length];
       ctx.moveTo(rad, rad);
       ctx.arc(rad, rad, rad, sectorAng, sectorAng + arc);
       ctx.lineTo(rad, rad);
@@ -76,8 +83,8 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
         ctx.lineTo(rad, rad);
         ctx.clip();
 
-        const imageSize = 40;
-        const distanceFromCenter = 130;
+        const imageSize = 60;
+        const distanceFromCenter = 155;
         const centerAngle = sectorAng + arc / 2;
         const imageX =
           rad + Math.cos(centerAngle) * distanceFromCenter - imageSize / 2;
@@ -162,10 +169,39 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
   useEffect(() => {
     if (products.length > 0) {
       setCurrentSector(products[0]);
+      setDisplayedProduct(products[0]);
     } else {
       setCurrentSector(null);
+      setDisplayedProduct(null);
     }
   }, [products]);
+
+  // Função para randomizar o texto exibido
+  const startRandomText = useCallback(() => {
+    if (products.length === 0) return;
+    
+    randomTextInterval.current = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * products.length);
+      setDisplayedProduct(products[randomIndex]);
+    }, 100); // Muda a cada 100ms para efeito rápido
+  }, [products]);
+
+  // Função para parar o texto aleatório
+  const stopRandomText = useCallback(() => {
+    if (randomTextInterval.current) {
+      clearInterval(randomTextInterval.current);
+      randomTextInterval.current = null;
+    }
+  }, []);
+
+  // Cleanup do interval quando o componente desmonta
+  useEffect(() => {
+    return () => {
+      if (randomTextInterval.current) {
+        clearInterval(randomTextInterval.current);
+      }
+    };
+  }, []);
 
   // Handler de fim de transição
   useEffect(() => {
@@ -175,14 +211,16 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
     const handleTransitionEnd = () => {
       canvas.style.transition = 'none';
       setIsSpinning(false);
+      stopRandomText(); // Para o texto aleatório
       if (selectedProduct) {
+        setDisplayedProduct(selectedProduct); // Mostra o produto correto
         onSpin(selectedProduct);
       }
     };
 
     canvas.addEventListener('transitionend', handleTransitionEnd);
     return () => canvas.removeEventListener('transitionend', handleTransitionEnd);
-  }, [onSpin, selectedProduct]);
+  }, [onSpin, selectedProduct, stopRandomText]);
 
   const handleSpin = () => {
     if (isSpinning || products.length === 0) return;
@@ -227,6 +265,7 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
     setIsSpinning(true);
     setWheelDeg(finalDeg);
     setCurrentSector(winner);
+    startRandomText(); // Inicia o texto aleatório
   };
 
   // Ciclo de efeitos
@@ -295,12 +334,21 @@ export default function SpinWheel({ products, onSpin }: SpinWheelProps) {
         </div>
       </div>
 
-      {/* Exibição do setor atual */}
-      {currentSector ? (
+      {/* Exibição do produto atual */}
+      {displayedProduct ? (
         <div className="mt-4 text-center">
-          <p className="text-green-600 font-semibold">
-            {currentSector.name} – {currentSector.probability}%
+          <p className={`font-semibold transition-colors duration-200 ${
+            isSpinning 
+              ? 'text-orange-500 animate-pulse' 
+              : 'text-green-600'
+          }`}>
+            {displayedProduct.name}
           </p>
+          {isSpinning && (
+            <p className="text-sm text-gray-500 mt-1">
+              🎲 Girando...
+            </p>
+          )}
         </div>
       ) : (
         <p className="mt-4 text-gray-500 text-center">

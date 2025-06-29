@@ -84,4 +84,39 @@
   .animate-glow-intense {
     animation: glow-intense 2s ease-in-out infinite;
   }
+
+  /* Float animations for decorative shake images */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(var(--rotation, 0deg)); }
+    50% { transform: translateY(-10px) rotate(var(--rotation, 0deg)); }
+  }
+  
+  @keyframes float-delayed {
+    0%, 100% { transform: translateY(0px) rotate(var(--rotation, 0deg)); }
+    50% { transform: translateY(-15px) rotate(var(--rotation, 0deg)); }
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-float-delayed {
+    animation: float-delayed 3s ease-in-out infinite 1.5s;
+  }
+
+  /* Background pattern for shake theme */
+  .shake-pattern-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 20% 80%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(34, 197, 94, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 1;
+  }
 }

@@ -77,13 +77,31 @@ export default function PrizeModal({ isOpen, winner, onClose }: PrizeModalProps)
           <div className="absolute top-1/2 left-2 w-1 h-1 bg-green-400 rounded-full animate-ping delay-500"></div>
           <div className="absolute top-1/3 right-2 w-1 h-1 bg-green-300 rounded-full animate-bounce delay-800"></div>
 
+          {/* Decorative Shake Images */}
+          <div className="absolute top-4 left-4">
+            <img src="/images/shake_04.png" alt="" className="w-8 h-12 opacity-30 animate-bounce" />
+          </div>
+          <div className="absolute top-6 right-4">
+            <img src="/images/shake_05.png" alt="" className="w-6 h-10 opacity-30 animate-bounce delay-500" />
+          </div>
+          <div className="absolute bottom-8 left-6">
+            <img src="/images/shake_06.png" alt="" className="w-7 h-11 opacity-30 animate-bounce delay-300" />
+          </div>
+          <div className="absolute bottom-6 right-6">
+            <img src="/images/shake_07.png" alt="" className="w-5 h-9 opacity-30 animate-bounce delay-700" />
+          </div>
+
           {/* Congratulations Text with Workout Energy */}
           <div className={`mb-6 transform transition-all duration-700 delay-500 ${
             showProduct ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
           }`}>
-            <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-green-400 mb-2 animate-power-pulse">
-              PARABÉNS! 🎉
-            </h1>
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <img src="/images/shake_13.png" alt="Shake celebration" className="w-10 h-14 animate-bounce" />
+              <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-green-400 animate-power-pulse">
+                PARABÉNS! 🎉
+              </h1>
+              <img src="/images/shake_de_morango.png" alt="Shake celebration" className="w-10 h-14 animate-bounce delay-300" />
+            </div>
             <div className="text-lg text-gray-700 font-bold mb-2 animate-victory-bounce">
               🏆 VOCÊ CONQUISTOU! 🏆
             </div>
